@@ -63,7 +63,14 @@ export default function TodayPage() {
     load()
   }, [goalId, date, router])
 
-  const todayTasks = allTasks.filter((t) => t.days_of_week.includes(dayOfWeek(date)))
+  const todayTasks = [...allTasks]
+    .filter((t) => t.days_of_week.includes(dayOfWeek(date)))
+    .sort((a, b) => {
+      if (!a.start_time && !b.start_time) return 0
+      if (!a.start_time) return 1
+      if (!b.start_time) return -1
+      return a.start_time.localeCompare(b.start_time)
+    })
 
   async function toggle(taskId: string) {
     const newValue = !logs[taskId]

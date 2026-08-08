@@ -62,10 +62,16 @@ export default function DayDetailPage() {
     load()
   }, [goalId, date, router])
 
-  const dayTasks = useMemo(
-    () => allTasks.filter((t) => t.days_of_week.includes(dayOfWeek(date))),
-    [allTasks, date]
-  )
+  const dayTasks = useMemo(() => {
+    const filtered = allTasks.filter((t) => t.days_of_week.includes(dayOfWeek(date)))
+    return [...filtered].sort((a, b) => {
+      // tasks without a start time sort to the end
+      if (!a.start_time && !b.start_time) return 0
+      if (!a.start_time) return 1
+      if (!b.start_time) return -1
+      return a.start_time.localeCompare(b.start_time)
+    })
+  }, [allTasks, date])
 
   const doneCount = dayTasks.filter((t) => logs[t.id]).length
   const completion = dayTasks.length ? Math.round((doneCount / dayTasks.length) * 100) : 0
