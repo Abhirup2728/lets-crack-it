@@ -30,10 +30,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-gradient-to-br from-indigo-50 via-white to-purple-50 text-gray-900">
+      <body className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-50 via-white to-purple-50 text-gray-900">
         <div className="flex-1">{children}</div>
 
-        <footer className="border-t border-gray-200 bg-white/60 backdrop-blur mt-10">
+        <footer className="border-t border-gray-200 bg-white/60 backdrop-blur">
           <div className="max-w-4xl mx-auto px-4 py-4 text-center text-[11px] leading-relaxed text-gray-500">
             <p>
               © 2026 By Abhirup Gumtya. All Rights Reserved. | Privacy Policy | Terms &amp; Conditions
