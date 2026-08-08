@@ -21,6 +21,9 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<GoalTask[]>([])
   const [logs, setLogs] = useState<GoalLog[]>([])
   const [loading, setLoading] = useState(true)
+  const [aiMessage, setAiMessage] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -214,6 +217,42 @@ export default function DashboardPage() {
     return tips
   }, [dailyCompletion, stats, taskWiseData, weekdayVsWeekend])
 
+  async function getAiCoaching() {
+    setAiLoading(true)
+    setAiError('')
+    setAiMessage('')
+
+    try {
+      const recentDays = dailyCompletion.slice(-10)
+      const res = await fetch('/api/coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          goalName: goal?.name,
+          endDate: goal?.end_date,
+          stats,
+          taskWiseData: taskWiseData.map((t) => ({ label: t.label, pct: t.pct })),
+          weekdayVsWeekend: {
+            weekday: weekdayVsWeekend.find((w) => w.name === 'Weekday')?.avg ?? 0,
+            weekend: weekdayVsWeekend.find((w) => w.name === 'Weekend')?.avg ?? 0,
+          },
+          recentDays,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAiError(data.error || 'Something went wrong.')
+      } else {
+        setAiMessage(data.message)
+      }
+    } catch (err) {
+      console.error(err)
+      setAiError('Could not reach the AI coach right now.')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   if (loading) return <main className="p-8 text-center text-gray-500">Loading...</main>
   if (!goal) return <main className="p-8 text-center text-gray-500">Goal not found.</main>
 
@@ -341,6 +380,46 @@ export default function DashboardPage() {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl shadow-sm p-5 text-white">
+          <div className="flex justify-between items-center mb-1">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              🤖 AI Career Coach
+            </h3>
+            <button
+              onClick={getAiCoaching}
+              disabled={aiLoading || dailyCompletion.length === 0}
+              className="bg-white/20 hover:bg-white/30 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-full transition"
+            >
+              {aiLoading ? 'Thinking...' : aiMessage ? 'Regenerate' : 'Get Personalized Advice'}
+            </button>
+          </div>
+          <p className="text-xs text-white/70 mb-4">
+            Powered by AI, reading your real tracked data for {goal.name}.
+          </p>
+
+          {dailyCompletion.length === 0 && (
+            <p className="text-sm text-white/80 bg-white/10 rounded-lg p-3">
+              Log a few days first — the coach needs real data to give you something useful.
+            </p>
+          )}
+
+          {aiError && (
+            <p className="text-sm text-red-100 bg-red-500/30 rounded-lg p-3">{aiError}</p>
+          )}
+
+          {aiMessage && (
+            <div className="bg-white/10 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-line">
+              {aiMessage}
+            </div>
+          )}
+
+          {!aiMessage && !aiError && !aiLoading && dailyCompletion.length > 0 && (
+            <p className="text-sm text-white/70">
+              Click &quot;Get Personalized Advice&quot; for a custom coaching message based on your actual progress.
+            </p>
+          )}
         </section>
       </div>
     </main>
