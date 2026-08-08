@@ -259,10 +259,13 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <div className="max-w-5xl mx-auto p-6 space-y-8">
-        <div className="flex justify-between items-center">
+        <div>
           <Link href="/goals" className="text-sm text-indigo-600 hover:underline">← All goals</Link>
-          <span className="text-sm font-medium text-gray-600">{goal.name}</span>
         </div>
+
+        <h1 className="text-center text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          {goal.name}
+        </h1>
 
         <div className="flex justify-center gap-1 bg-white/70 backdrop-blur rounded-full p-1 shadow-sm border border-gray-200 w-fit mx-auto">
           <Link href={`/goals/${goalId}/today`} className="px-5 py-2 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-100">Today</Link>

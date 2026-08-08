@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { supabase } from '@/lib/supabase'
-import { Goal, GoalTask, dayOfWeek, formatFullDate, todayStr } from '@/lib/goals'
+import { Goal, GoalTask, dayOfWeek, formatFullDate, todayStr, formatTime12h } from '@/lib/goals'
 
 export default function DayDetailPage() {
   const params = useParams<{ id: string; date: string }>()
@@ -19,11 +19,9 @@ export default function DayDetailPage() {
   const [allTimeAvg, setAllTimeAvg] = useState(0)
   const [loading, setLoading] = useState(true)
 
+  const isFuture = date > todayStr()
+
   useEffect(() => {
-    if (date > todayStr()) {
-      router.replace(`/goals/${goalId}/history`)
-      return
-    }
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -37,26 +35,27 @@ export default function DayDetailPage() {
       const { data: taskData } = await supabase.from('goal_tasks').select('*').eq('goal_id', goalId)
       setAllTasks(taskData || [])
 
-      const { data: dayLogs } = await supabase
-        .from('goal_logs')
-        .select('*')
-        .eq('goal_id', goalId)
-        .eq('date', date)
-      const map: Record<string, boolean> = {}
-      for (const l of dayLogs || []) map[l.task_id] = l.completed
-      setLogs(map)
+      if (date <= todayStr()) {
+        const { data: dayLogs } = await supabase
+          .from('goal_logs')
+          .select('*')
+          .eq('goal_id', goalId)
+          .eq('date', date)
+        const map: Record<string, boolean> = {}
+        for (const l of dayLogs || []) map[l.task_id] = l.completed
+        setLogs(map)
 
-      // all-time average across every logged day for this goal
-      const { data: allLogs } = await supabase.from('goal_logs').select('*').eq('goal_id', goalId)
-      const byDate: Record<string, { done: number; total: number }> = {}
-      for (const l of allLogs || []) {
-        if (!byDate[l.date]) byDate[l.date] = { done: 0, total: 0 }
-        byDate[l.date].total += 1
-        if (l.completed) byDate[l.date].done += 1
+        const { data: allLogs } = await supabase.from('goal_logs').select('*').eq('goal_id', goalId)
+        const byDate: Record<string, { done: number; total: number }> = {}
+        for (const l of allLogs || []) {
+          if (!byDate[l.date]) byDate[l.date] = { done: 0, total: 0 }
+          byDate[l.date].total += 1
+          if (l.completed) byDate[l.date].done += 1
+        }
+        const pcts = Object.values(byDate).map((v) => (v.total ? v.done / v.total : 0))
+        const avg = pcts.length ? Math.round((pcts.reduce((a, b) => a + b, 0) / pcts.length) * 100) : 0
+        setAllTimeAvg(avg)
       }
-      const pcts = Object.values(byDate).map((v) => (v.total ? v.done / v.total : 0))
-      const avg = pcts.length ? Math.round((pcts.reduce((a, b) => a + b, 0) / pcts.length) * 100) : 0
-      setAllTimeAvg(avg)
 
       setLoading(false)
     }
@@ -77,12 +76,6 @@ export default function DayDetailPage() {
     { name: 'Missed', value: dayTasks.length - doneCount, color: '#e5e7eb' },
   ]
 
-  const taskBars = dayTasks.map((t) => ({
-    label: t.label,
-    done: logs[t.id] ? 1 : 0,
-    color: t.color,
-  }))
-
   if (loading) return <main className="p-8 text-center text-gray-500">Loading...</main>
   if (!goal) return <main className="p-8 text-center text-gray-500">Goal not found.</main>
 
@@ -95,13 +88,47 @@ export default function DayDetailPage() {
 
         <div className="text-center mb-6">
           <h2 className="text-3xl font-bold">{formatFullDate(date)}</h2>
-          <p className="text-sm text-gray-500 mt-1">{goal.name}</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {goal.name}
+            {isFuture && <span className="ml-2 text-indigo-500 font-medium">· Upcoming</span>}
+          </p>
         </div>
 
         {dayTasks.length === 0 ? (
           <p className="text-center text-gray-400 bg-white rounded-xl border border-gray-200 p-6">
-            No tasks were scheduled for this day.
+            No tasks are scheduled for this day.
           </p>
+        ) : isFuture ? (
+          <>
+            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 mb-4 text-center text-sm text-indigo-700">
+              This day hasn&apos;t happened yet — here&apos;s what&apos;s scheduled. You can&apos;t check these off until the day arrives.
+            </div>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+              <h3 className="text-sm font-semibold mb-3">Scheduled Tasks ({dayTasks.length})</h3>
+              <ul className="space-y-2">
+                {dayTasks.map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border-2"
+                    style={{ backgroundColor: `${t.color}10`, borderColor: t.color }}
+                  >
+                    <span
+                      className="w-5 h-5 rounded-full border-2 flex-shrink-0"
+                      style={{ borderColor: t.color }}
+                    />
+                    <span className="font-medium" style={{ color: t.color }}>
+                      {t.label}
+                      {t.start_time && t.end_time && (
+                        <span className="text-xs text-gray-400 ml-2 font-normal">
+                          {formatTime12h(t.start_time)}–{formatTime12h(t.end_time)}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -139,25 +166,35 @@ export default function DayDetailPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
               <h3 className="text-sm font-semibold mb-3">Task Checklist — This Day</h3>
               <ul className="space-y-2">
-                {taskBars.map((t) => (
-                  <li
-                    key={t.label}
-                    className="flex items-center gap-3 p-3 rounded-lg border-2"
-                    style={{
-                      backgroundColor: t.done ? `${t.color}15` : '#fafafa',
-                      borderColor: t.color,
-                      opacity: t.done ? 1 : 0.6,
-                    }}
-                  >
-                    <span
-                      className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                      style={{ backgroundColor: t.done ? '#16a34a' : '#9ca3af' }}
+                {dayTasks.map((t) => {
+                  const checked = !!logs[t.id]
+                  return (
+                    <li
+                      key={t.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border-2"
+                      style={{
+                        backgroundColor: checked ? `${t.color}15` : '#fafafa',
+                        borderColor: t.color,
+                        opacity: checked ? 1 : 0.6,
+                      }}
                     >
-                      {t.done ? '✓' : '✗'}
-                    </span>
-                    <span className="font-medium" style={{ color: t.color }}>{t.label}</span>
-                  </li>
-                ))}
+                      <span
+                        className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                        style={{ backgroundColor: checked ? '#16a34a' : '#9ca3af' }}
+                      >
+                        {checked ? '✓' : '✗'}
+                      </span>
+                      <span className="font-medium" style={{ color: t.color }}>
+                        {t.label}
+                        {t.start_time && t.end_time && (
+                          <span className="text-xs text-gray-400 ml-2 font-normal">
+                            {formatTime12h(t.start_time)}–{formatTime12h(t.end_time)}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           </>
