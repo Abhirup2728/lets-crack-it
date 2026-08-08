@@ -10,13 +10,21 @@ export default function GoalsPage() {
   const router = useRouter()
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
+
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [endDate, setEndDate] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editEndDate, setEditEndDate] = useState('')
+  const [editError, setEditError] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -69,6 +77,7 @@ export default function GoalsPage() {
     await supabase.auth.signOut()
     router.push('/login')
   }
+
   async function deleteGoal(goalId: string) {
     const { error } = await supabase.from('goals').delete().eq('id', goalId)
     if (error) {
@@ -78,6 +87,40 @@ export default function GoalsPage() {
     setGoals((prev) => prev.filter((g) => g.id !== goalId))
     setConfirmDeleteId(null)
     setOpenMenuId(null)
+  }
+
+  function startEditGoal(g: Goal) {
+    setEditingGoalId(g.id)
+    setEditName(g.name)
+    setEditEndDate(g.end_date)
+    setEditError('')
+    setOpenMenuId(null)
+  }
+
+  async function saveGoalEdit(goalId: string) {
+    setEditError('')
+    if (!editName.trim() || !editEndDate) {
+      setEditError('Please fill in both the goal name and end date.')
+      return
+    }
+    setEditSaving(true)
+
+    const { data, error } = await supabase
+      .from('goals')
+      .update({ name: editName.trim(), end_date: editEndDate })
+      .eq('id', goalId)
+      .select()
+      .single()
+
+    setEditSaving(false)
+
+    if (error) {
+      setEditError(error.message)
+      return
+    }
+
+    setGoals((prev) => prev.map((g) => (g.id === goalId ? data : g)))
+    setEditingGoalId(null)
   }
 
   if (loading) return <main className="p-8 text-center text-gray-500">Loading...</main>
@@ -112,7 +155,7 @@ export default function GoalsPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. CAT, Fitness, Learn Guitar"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <div>
@@ -121,7 +164,7 @@ export default function GoalsPage() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -147,58 +190,115 @@ export default function GoalsPage() {
               key={g.id}
               className="relative bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:border-indigo-300 transition"
             >
-              <Link href={`/goals/${g.id}/today`} className="block pr-8">
-                <div className="font-semibold">{g.name}</div>
-                <div className="text-xs text-gray-500">
-                  {g.start_date} → {g.end_date}
-                </div>
-              </Link>
+              {editingGoalId === g.id ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-gray-500">Goal name</label>
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-gray-500">Target end date</label>
+                    <input
+                      type="date"
+                      value={editEndDate}
+                      onChange={(e) => setEditEndDate(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  {editError && <p className="text-sm text-red-600">{editError}</p>}
 
-              <button
-                onClick={(e) => {
-                  e.preventDefault()
-                  setOpenMenuId(openMenuId === g.id ? null : g.id)
-                }}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 px-1"
-              >
-                ⋮
-              </button>
-
-              {openMenuId === g.id && (
-                <div className="absolute top-10 right-4 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setConfirmDeleteId(g.id)
-                      setOpenMenuId(null)
-                    }}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 whitespace-nowrap"
+                  <Link
+                    href={`/goals/${g.id}/setup`}
+                    className="block text-sm text-indigo-600 hover:underline"
                   >
-                    Delete goal
-                  </button>
-                </div>
-              )}
+                    Manage routine — add, edit, or remove daily tasks →
+                  </Link>
 
-              {confirmDeleteId === g.id && (
-                <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-3 p-4 z-20">
-                  <p className="text-sm text-center font-medium">
-                    Delete &quot;{g.name}&quot;? This removes its entire routine and history — this cannot be undone.
-                  </p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 pt-1">
                     <button
-                      onClick={() => setConfirmDeleteId(null)}
-                      className="px-4 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                      onClick={() => setEditingGoalId(null)}
+                      className="flex-1 border border-gray-300 text-gray-600 rounded-lg py-1.5 text-sm font-medium hover:bg-gray-50 transition"
                     >
                       Cancel
                     </button>
                     <button
-                      onClick={() => deleteGoal(g.id)}
-                      className="px-4 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
+                      onClick={() => saveGoalEdit(g.id)}
+                      disabled={editSaving}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg py-1.5 text-sm font-medium transition disabled:opacity-50"
                     >
-                      Delete
+                      {editSaving ? 'Saving...' : 'Save Changes'}
                     </button>
                   </div>
                 </div>
+              ) : (
+                <>
+                  <Link href={`/goals/${g.id}/today`} className="block pr-8">
+                    <div className="font-semibold">{g.name}</div>
+                    <div className="text-xs text-gray-500">
+                      {g.start_date} → {g.end_date}
+                    </div>
+                  </Link>
+
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setOpenMenuId(openMenuId === g.id ? null : g.id)
+                    }}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 px-1"
+                  >
+                    ⋮
+                  </button>
+
+                  {openMenuId === g.id && (
+                    <div className="absolute top-10 right-4 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          startEditGoal(g)
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+                      >
+                        Edit goal
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          setConfirmDeleteId(g.id)
+                          setOpenMenuId(null)
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 whitespace-nowrap"
+                      >
+                        Delete goal
+                      </button>
+                    </div>
+                  )}
+
+                  {confirmDeleteId === g.id && (
+                    <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-3 p-4 z-20">
+                      <p className="text-sm text-center font-medium">
+                        Delete &quot;{g.name}&quot;? This removes its entire routine and history — this cannot be undone.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="px-4 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => deleteGoal(g.id)}
+                          className="px-4 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ))}
