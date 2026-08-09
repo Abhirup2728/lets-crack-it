@@ -21,6 +21,19 @@ export default function TodayPage() {
   const [logs, setLogs] = useState<LogMap>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [currentTime, setCurrentTime] = useState('')
+
+  useEffect(() => {
+    function updateClock() {
+      const now = new Date()
+      const h = String(now.getHours()).padStart(2, '0')
+      const m = String(now.getMinutes()).padStart(2, '0')
+      setCurrentTime(`${h}:${m}`)
+    }
+    updateClock()
+    const interval = setInterval(updateClock, 30000) // refresh every 30s
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     async function load() {
@@ -71,6 +84,11 @@ export default function TodayPage() {
       if (!b.start_time) return -1
       return a.start_time.localeCompare(b.start_time)
     })
+
+  function isHappeningNow(task: GoalTask) {
+    if (!task.start_time || !task.end_time || !currentTime) return false
+    return currentTime >= task.start_time && currentTime <= task.end_time
+  }
 
   async function toggle(taskId: string) {
     const newValue = !logs[taskId]
@@ -163,12 +181,20 @@ export default function TodayPage() {
           <ul className="space-y-2">
             {todayTasks.map((t) => {
               const checked = !!logs[t.id]
+              const active = isHappeningNow(t)
               return (
-                <li key={t.id}>
+                <li key={t.id} className="relative">
+                  {active && (
+                    <div className="absolute -left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+                    </div>
+                  )}
                   <label
-                    className="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition"
+                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${
+                      active ? 'ring-2 ring-green-400 ring-offset-2 shadow-md scale-[1.02]' : ''
+                    }`}
                     style={{
-                      backgroundColor: checked ? `${t.color}15` : '#fafafa',
+                      backgroundColor: checked ? `${t.color}15` : active ? `${t.color}20` : '#fafafa',
                       borderColor: t.color,
                     }}
                   >
@@ -179,7 +205,7 @@ export default function TodayPage() {
                       className="w-5 h-5"
                       style={{ accentColor: t.color }}
                     />
-                    <span className="font-medium" style={{ color: t.color }}>
+                    <span className="font-medium flex-1" style={{ color: t.color }}>
                       {t.label}
                       {t.start_time && t.end_time && (
                         <span className="text-xs text-gray-400 ml-2 font-normal">
@@ -187,6 +213,11 @@ export default function TodayPage() {
                         </span>
                       )}
                     </span>
+                    {active && (
+                      <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full whitespace-nowrap">
+                        ● NOW
+                      </span>
+                    )}
                   </label>
                 </li>
               )
