@@ -348,13 +348,25 @@ export default function DashboardPage() {
             {pieData.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-16">Log a few days to see this chart fill in.</p>
             ) : (
-              <ResponsiveContainer width="100%" height={240}>
-                <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} label>
+              <ResponsiveContainer width="100%" height={340}>
+                <PieChart margin={{ top: 10, bottom: 10 }}>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="42%"
+                    outerRadius={75}
+                  >
                     {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
                   </Pie>
                   <Tooltip />
-                  <Legend />
+                  <Legend
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                    align="center"
+                    wrapperStyle={{ fontSize: 11, lineHeight: '18px' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}

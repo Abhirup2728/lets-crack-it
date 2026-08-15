@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-flash-lite-latest' })
 
     const prompt = `
 You are an experienced, warm, but direct career coach and accountability mentor. A user is tracking daily progress toward a personal goal called "${goalName}" with a target deadline of ${endDate}.
@@ -45,12 +45,17 @@ Write a short, personalized coaching message (150-220 words) that:
 Write in plain prose, second person ("you"), no markdown headers, no bullet symbols, just natural paragraphs. Do not repeat back all the raw numbers verbatim — synthesize them into insight.
 `.trim()
 
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 25000) // 25 second max wait
+
     const result = await model.generateContent(prompt)
+    clearTimeout(timeout)
     const text = result.response.text()
 
     return NextResponse.json({ message: text })
-  } catch (err) {
+ } catch (err) {
     console.error('Gemini coach error:', err)
-    return NextResponse.json({ error: 'Could not generate coaching message right now.' }, { status: 500 })
-  }
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    return NextResponse.json({ error: `AI error: ${message}` }, { status: 500 })
+  } 
 }
