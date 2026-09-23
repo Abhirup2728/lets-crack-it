@@ -129,9 +129,12 @@ export default function GoalsPage() {
     <main className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <div className="max-w-2xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Let&apos;s Crack it
-          </h1>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="Let's Crack It logo" className="w-8 h-8" />
+            <h1 className="text-2xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              Let&apos;s Crack it
+            </h1>
+          </div>
           <button onClick={logout} className="text-sm text-gray-500 hover:text-gray-800">
             Log out
           </button>
