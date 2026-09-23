@@ -75,6 +75,11 @@ export default function RootPage() {
     <main>
       {/* Hero */}
       <section className="max-w-3xl mx-auto px-6 pt-16 pb-12 text-center">
+        <img
+          src="/logo.png"
+          alt="Let's Crack It logo"
+          className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-4"
+        />
         <h1 className="text-4xl md:text-6xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-4">
           Let&apos;s Crack it
         </h1>
