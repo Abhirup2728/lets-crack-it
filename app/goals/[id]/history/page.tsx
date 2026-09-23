@@ -42,6 +42,8 @@ function heatColor(pct: number): { backgroundColor: string; color: string } {
   return { backgroundColor: shade.bg, color: shade.text }
 }
 
+type GoalLog = { task_id: string; date: string; completed: boolean }
+
 export default function HistoryPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
@@ -50,7 +52,7 @@ export default function HistoryPage() {
 
   const [goal, setGoal] = useState<Goal | null>(null)
   const [tasks, setTasks] = useState<GoalTask[]>([])
-  const [completionMap, setCompletionMap] = useState<Record<string, number>>({})
+  const [logs, setLogs] = useState<GoalLog[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -64,32 +66,35 @@ export default function HistoryPage() {
       const { data: goalData } = await supabase.from('goals').select('*').eq('id', goalId).single()
       setGoal(goalData)
 
-      const { data: taskData } = await supabase
-        .from('goal_tasks')
-        .select('*')
-        .eq('goal_id', goalId)
+      const { data: taskData } = await supabase.from('goal_tasks').select('*').eq('goal_id', goalId)
       setTasks(taskData || [])
 
       const { data: logData } = await supabase
         .from('goal_logs')
-        .select('*')
+        .select('task_id,date,completed')
         .eq('goal_id', goalId)
+      setLogs(logData || [])
 
-      const byDate: Record<string, { done: number; total: number }> = {}
-      for (const l of logData || []) {
-        if (!byDate[l.date]) byDate[l.date] = { done: 0, total: 0 }
-        byDate[l.date].total += 1
-        if (l.completed) byDate[l.date].done += 1
-      }
-      const map: Record<string, number> = {}
-      for (const [d, v] of Object.entries(byDate)) {
-        map[d] = v.total ? Math.round((v.done / v.total) * 100) : 0
-      }
-      setCompletionMap(map)
       setLoading(false)
     }
     load()
   }, [goalId, router])
+
+  // task_id__date -> completed, for O(1) lookups while rendering
+  const logMap = useMemo(() => {
+    const map = new Map<string, boolean>()
+    for (const l of logs) map.set(`${l.task_id}__${l.date}`, l.completed)
+    return map
+  }, [logs])
+
+  // The SAME calculation the day-detail page uses: scheduled tasks for that
+  // weekday are the denominator, not "however many tasks happened to get a log row."
+  function completionForDate(dateStr: string): number | null {
+    const scheduled = tasks.filter((t) => t.days_of_week.includes(dayOfWeek(dateStr)))
+    if (scheduled.length === 0) return null // nothing scheduled that day
+    const done = scheduled.filter((t) => logMap.get(`${t.id}__${dateStr}`)).length
+    return Math.round((done / scheduled.length) * 100)
+  }
 
   const months = useMemo(() => {
     if (!goal) return []
@@ -155,8 +160,6 @@ export default function HistoryPage() {
                 {cells.map((dateStr, i) => {
                   if (!dateStr) return <div key={i} />
                   const isFuture = dateStr > today
-                  const hasTasksThatDay = tasks.some((t) => t.days_of_week.includes(dayOfWeek(dateStr)))
-                  const pct = completionMap[dateStr]
                   const dayNum = Number(dateStr.slice(-2))
 
                   if (isFuture) {
@@ -171,7 +174,10 @@ export default function HistoryPage() {
                     )
                   }
 
-                  if (!hasTasksThatDay) {
+                  const pct = completionForDate(dateStr)
+
+                  if (pct === null) {
+                    // nothing scheduled that day — neutral, not part of the heatmap
                     return (
                       <div key={dateStr} className="aspect-square flex items-center justify-center rounded-lg bg-white text-gray-300 text-sm border border-gray-100">
                         {dayNum}
@@ -179,8 +185,7 @@ export default function HistoryPage() {
                     )
                   }
 
-                  const effectivePct = pct ?? 0 // no completions logged that day = 0%, not "unknown"
-                  const heat = heatColor(effectivePct)
+                  const heat = heatColor(pct)
 
                   return (
                     <Link
