@@ -37,7 +37,6 @@ A full-stack, multi-tenant goal and habit-tracking platform — built with Next.
 
 <br/>
 
-> 📝 **Note:** Replace the live-demo URL above with your final production Vercel domain if it differs, and swap the screenshot placeholders below with real captures before publishing.
 
 ---
 
