@@ -186,12 +186,15 @@ export default function HistoryPage() {
                   }
 
                   const heat = heatColor(pct)
+                  const isToday = dateStr === today
 
                   return (
                     <Link
                       key={dateStr}
                       href={`/goals/${goalId}/history/${dateStr}`}
-                      className="aspect-square flex items-center justify-center rounded-lg text-sm font-semibold hover:scale-105 transition"
+                      className={`aspect-square flex items-center justify-center rounded-lg text-sm font-semibold hover:scale-105 transition ${
+                        isToday ? 'ring-4 ring-indigo-500 ring-offset-2' : ''
+                      }`}
                       style={heat}
                     >
                       {dayNum}

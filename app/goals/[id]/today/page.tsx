@@ -163,9 +163,12 @@ export default function TodayPage() {
           </Link>
         </div>
 
-        <h1 className="text-center text-3xl md:text-4xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-          {goal.name}
-        </h1>
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <img src="/logo.png" alt="Let's Crack It logo" className="w-9 h-9 md:w-11 md:h-11" />
+          <h1 className="text-center text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            {goal.name}
+          </h1>
+        </div>
 
         <div className="flex justify-center gap-1 bg-white/70 backdrop-blur rounded-full p-1 shadow-sm border border-gray-200 mb-6 w-fit mx-auto">
           <Link href={`/goals/${goalId}/today`} className="px-5 py-2 rounded-full text-sm font-medium bg-indigo-600 text-white shadow">
@@ -204,8 +207,16 @@ export default function TodayPage() {
           <DayCountdown />
         </div>
 
-        <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
-          <p className="text-sm italic text-gray-600">&ldquo;{quoteForDate(date)}&rdquo;</p>
+        <div className="mb-6 bg-gradient-to-br from-black-50 to-purple-50 rounded-xl shadow-sm border border-indigo-100 p-5 text-center">
+          <div className="text-[11px] font-bold uppercase tracking-widest text-indigo-400 mb-2">
+            Quote of the Day
+          </div>
+          <p
+            className="text-lg md:text-xl italic font-bold text-black-700 leading-snug"
+            style={{ fontFamily: "'Georgia', 'Cambria', serif" }}
+          >
+            &ldquo;{quoteForDate(date)}&rdquo;
+          </p>
         </div>
 
         <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-4">
