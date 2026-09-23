@@ -255,7 +255,7 @@ export default function TodayPage() {
                       return (
                         <div
                           className="absolute inset-y-0 left-0 transition-all duration-1000 ease-linear"
-                          style={{ width: `${fill.pct}%`, backgroundColor: fill.color, opacity: 0.15 }}
+                          style={{ width: `${fill.pct}%`, backgroundColor: fill.color, opacity: 0.35 }}
                         />
                       )
                     })()}
@@ -266,14 +266,28 @@ export default function TodayPage() {
                       className="relative z-10 w-5 h-5"
                       style={{ accentColor: t.color }}
                     />
-                    <span className="relative z-10 font-medium flex-1" style={{ color: t.color }}>
-                      {t.label}
-                      {t.start_time && t.end_time && (
-                        <span className="text-xs text-gray-400 ml-2 font-normal">
-                          {formatTime12h(t.start_time)}–{formatTime12h(t.end_time)}
-                        </span>
-                      )}
-                    </span>
+                    <div className="relative z-10 flex-1">
+                      <span className="font-medium" style={{ color: t.color }}>
+                        {t.label}
+                        {t.start_time && t.end_time && (
+                          <span className="text-xs text-gray-400 ml-2 font-normal">
+                            {formatTime12h(t.start_time)}–{formatTime12h(t.end_time)}
+                          </span>
+                        )}
+                      </span>
+                      {!checked && (() => {
+                        const fill = getFillInfo(t)
+                        if (!fill) return null
+                        return (
+                          <div className="mt-1.5 h-1.5 w-full max-w-[160px] rounded-full bg-black/10 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-1000 ease-linear"
+                              style={{ width: `${fill.pct}%`, backgroundColor: fill.color }}
+                            />
+                          </div>
+                        )
+                      })()}
+                    </div>
                     {active && (
                       <span className="relative z-10 text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full whitespace-nowrap">
                         ● NOW
