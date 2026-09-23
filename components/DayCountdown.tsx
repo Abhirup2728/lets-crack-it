@@ -8,6 +8,14 @@ function msUntilMidnight() {
   midnight.setHours(24, 0, 0, 0)
   return midnight.getTime() - now.getTime()
 }
+function pctOfDayElapsed() {
+  const now = new Date()
+  const startOfDay = new Date(now)
+  startOfDay.setHours(0, 0, 0, 0)
+  const elapsed = now.getTime() - startOfDay.getTime()
+  const totalDay = 24 * 60 * 60 * 1000
+  return Math.max(0, Math.min(100, (elapsed / totalDay) * 100))
+}
 
 function formatHMS(ms: number) {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000))
@@ -39,12 +47,18 @@ export default function DayCountdown() {
   const isUrgent = remaining < 60 * 60 * 1000
 
   return (
-    <div className={`rounded-xl shadow-sm p-4 text-center text-white bg-gradient-to-br ${
+    <div className={`relative overflow-hidden rounded-xl shadow-sm p-4 text-center text-white bg-gradient-to-br ${
       isUrgent ? 'from-red-600 to-rose-700 animate-pulse' : 'from-rose-500 to-orange-500'
     }`}>
-      <div className="text-xs uppercase tracking-wide opacity-80">Time Left Today</div>
-      <div className="text-4xl font-extrabold mt-1 font-mono tabular-nums">{formatHMS(remaining)}</div>
-      <div className="text-xs opacity-80 mt-1">Resets at midnight</div>
+      <div
+        className="absolute inset-y-0 left-0 bg-black transition-all duration-1000"
+        style={{ width: `${pctOfDayElapsed()}%`, opacity: 0.22 }}
+      />
+      <div className="relative z-10">
+        <div className="text-xs uppercase tracking-wide opacity-80">Time Left Today</div>
+        <div className="text-4xl font-extrabold mt-1 font-mono tabular-nums">{formatHMS(remaining)}</div>
+        <div className="text-xs opacity-80 mt-1">Resets at midnight</div>
+      </div>
     </div>
   )
 }

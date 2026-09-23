@@ -84,3 +84,12 @@ export function daysRemaining(todayDateStr: string, targetDateStr: string) {
   const diffMs = target.getTime() - today.getTime()
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 }
+export function goalProgressPct(startDate: string, endDate: string, today: string): number {
+  const start = new Date(startDate + 'T00:00:00').getTime()
+  const end = new Date(endDate + 'T00:00:00').getTime()
+  const now = new Date(today + 'T00:00:00').getTime()
+  const total = end - start
+  if (total <= 0) return 100
+  const elapsed = now - start
+  return Math.max(0, Math.min(100, (elapsed / total) * 100))
+}

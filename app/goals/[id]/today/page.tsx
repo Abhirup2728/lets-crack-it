@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { Goal, GoalTask, todayStr, dayOfWeek, formatFullDate, formatTime12h, daysRemaining } from '@/lib/goals'
+import { Goal, GoalTask, todayStr, dayOfWeek, formatFullDate, formatTime12h, daysRemaining, goalProgressPct } from '@/lib/goals'
 import { quoteForDate } from '@/lib/quotes'
 import DayCountdown from '@/components/DayCountdown'
 
@@ -90,6 +90,48 @@ export default function TodayPage() {
     return currentTime >= task.start_time && currentTime <= task.end_time
   }
 
+  function getDelayStatus(task: GoalTask) {
+    if (!task.start_time || !currentTime) return null
+    const [ch, cm] = currentTime.split(':').map(Number)
+    const [sh, sm] = task.start_time.split(':').map(Number)
+    const diff = (ch * 60 + cm) - (sh * 60 + sm)
+    return diff < 0 ? { late: false, minutes: -diff } : { late: true, minutes: diff }
+  }
+
+  function formatMins(mins: number) {
+    const h = Math.floor(mins / 60)
+    const m = mins % 60
+    return h > 0 ? `${h}h ${m}m` : `${m}m`
+  }
+
+  function delayColorClasses(minutes: number) {
+    if (minutes < 15) return 'bg-yellow-100 text-yellow-700'
+    if (minutes < 30) return 'bg-orange-100 text-orange-700'
+    if (minutes < 60) return 'bg-red-100 text-red-700'
+    return 'bg-red-200 text-red-800'
+  }
+
+  function getFillInfo(task: GoalTask) {
+    if (!task.start_time || !currentTime) return null
+    const toMinutes = (t: string) => {
+      const [h, m] = t.split(':').map(Number)
+      return h * 60 + m
+    }
+    const nowMin = toMinutes(currentTime)
+    const startMin = toMinutes(task.start_time)
+    const endMin = task.end_time ? toMinutes(task.end_time) : startMin + 60
+
+    if (nowMin < startMin) {
+      return null
+    }
+    if (nowMin >= startMin && nowMin <= endMin) {
+      const duration = Math.max(1, endMin - startMin)
+      const pct = Math.max(0, Math.min(100, ((nowMin - startMin) / duration) * 100))
+      return { pct, color: '#16a34a' } // green
+    }
+    return { pct: 100, color: '#dc2626' } // red, full
+  }
+
   async function toggle(taskId: string) {
     const newValue = !logs[taskId]
     setLogs((prev) => ({ ...prev, [taskId]: newValue }))
@@ -145,10 +187,19 @@ export default function TodayPage() {
         </div>
 
         <div className="mb-4 grid grid-cols-2 gap-3">
-          <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl shadow-sm p-4 text-center text-white">
-            <div className="text-xs uppercase tracking-wide opacity-80">Days to {goal.name}</div>
-            <div className="text-4xl font-extrabold mt-1">{daysRemaining(date, goal.end_date)}</div>
-            <div className="text-xs opacity-80 mt-1">{formatFullDate(goal.end_date)}</div>
+          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl shadow-sm p-4 text-center text-white">
+            <div
+              className="absolute inset-y-0 left-0 bg-indigo-950 transition-all duration-1000"
+              style={{ width: `${goalProgressPct(goal.start_date, goal.end_date, date)}%`, opacity: 0.45 }}
+            />
+            <div className="relative z-10">
+              <div className="text-xs uppercase tracking-wide opacity-80">Days to {goal.name}</div>
+              <div className="text-4xl font-extrabold mt-1">{daysRemaining(date, goal.end_date)}</div>
+              <div className="flex justify-between text-[10px] opacity-80 mt-2">
+                <span>{formatFullDate(goal.start_date)}</span>
+                <span>{formatFullDate(goal.end_date)}</span>
+              </div>
+            </div>
           </div>
           <DayCountdown />
         </div>
@@ -190,7 +241,7 @@ export default function TodayPage() {
                     </div>
                   )}
                   <label
-                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${
+                    className={`relative overflow-hidden flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${
                       active ? 'ring-2 ring-green-400 ring-offset-2 shadow-md scale-[1.02]' : ''
                     }`}
                     style={{
@@ -198,14 +249,24 @@ export default function TodayPage() {
                       borderColor: t.color,
                     }}
                   >
+                    {!checked && (() => {
+                      const fill = getFillInfo(t)
+                      if (!fill) return null
+                      return (
+                        <div
+                          className="absolute inset-y-0 left-0 transition-all duration-1000 ease-linear"
+                          style={{ width: `${fill.pct}%`, backgroundColor: fill.color, opacity: 0.15 }}
+                        />
+                      )
+                    })()}
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggle(t.id)}
-                      className="w-5 h-5"
+                      className="relative z-10 w-5 h-5"
                       style={{ accentColor: t.color }}
                     />
-                    <span className="font-medium flex-1" style={{ color: t.color }}>
+                    <span className="relative z-10 font-medium flex-1" style={{ color: t.color }}>
                       {t.label}
                       {t.start_time && t.end_time && (
                         <span className="text-xs text-gray-400 ml-2 font-normal">
@@ -214,10 +275,26 @@ export default function TodayPage() {
                       )}
                     </span>
                     {active && (
-                      <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full whitespace-nowrap">
+                      <span className="relative z-10 text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full whitespace-nowrap">
                         ● NOW
                       </span>
                     )}
+                    {!active && !checked && (() => {
+                      const delay = getDelayStatus(t)
+                      if (!delay) return null
+                      if (delay.late) {
+                        return (
+                          <span className={`relative z-10 text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap ${delayColorClasses(delay.minutes)}`}>
+                            {formatMins(delay.minutes)} late
+                          </span>
+                        )
+                      }
+                      return (
+                        <span className="relative z-10 text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-1 rounded-full whitespace-nowrap">
+                          in {formatMins(delay.minutes)}
+                        </span>
+                      )
+                    })()}
                   </label>
                 </li>
               )

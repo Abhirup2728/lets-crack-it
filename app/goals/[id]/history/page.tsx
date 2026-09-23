@@ -22,6 +22,26 @@ function daysInMonth(y: number, m: number) {
   return new Date(y, m, 0).getDate()
 }
 
+const GREEN_SHADES = [
+  { bg: '#f0fdf4', text: '#166534' }, // 1–10%
+  { bg: '#dcfce7', text: '#166534' }, // 11–20%
+  { bg: '#bbf7d0', text: '#166534' }, // 21–30%
+  { bg: '#86efac', text: '#14532d' }, // 31–40%
+  { bg: '#4ade80', text: '#14532d' }, // 41–50%
+  { bg: '#22c55e', text: '#ffffff' }, // 51–60%
+  { bg: '#16a34a', text: '#ffffff' }, // 61–70%
+  { bg: '#15803d', text: '#ffffff' }, // 71–80%
+  { bg: '#166534', text: '#ffffff' }, // 81–90%
+  { bg: '#14532d', text: '#ffffff' }, // 91–100%
+]
+
+function heatColor(pct: number): { backgroundColor: string; color: string } {
+  if (pct === 0) return { backgroundColor: '#dc2626', color: '#ffffff' }
+  const bucket = Math.min(9, Math.ceil(pct / 10) - 1)
+  const shade = GREEN_SHADES[bucket]
+  return { backgroundColor: shade.bg, color: shade.text }
+}
+
 export default function HistoryPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
@@ -159,18 +179,15 @@ export default function HistoryPage() {
                     )
                   }
 
-                  const intensity =
-                    pct === undefined ? 'bg-white text-gray-700 border border-gray-200' :
-                    pct >= 80 ? 'bg-green-500 text-white' :
-                    pct >= 40 ? 'bg-yellow-400 text-white' :
-                    pct > 0 ? 'bg-orange-400 text-white' :
-                    'bg-red-200 text-red-800'
+                  const effectivePct = pct ?? 0 // no completions logged that day = 0%, not "unknown"
+                  const heat = heatColor(effectivePct)
 
                   return (
                     <Link
                       key={dateStr}
                       href={`/goals/${goalId}/history/${dateStr}`}
-                      className={`aspect-square flex items-center justify-center rounded-lg text-sm font-semibold hover:scale-105 transition ${intensity}`}
+                      className="aspect-square flex items-center justify-center rounded-lg text-sm font-semibold hover:scale-105 transition"
+                      style={heat}
                     >
                       {dayNum}
                     </Link>
