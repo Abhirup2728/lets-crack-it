@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -18,6 +18,16 @@ export default function LoginPage() {
     setError('')
     setInfo('')
     setLoading(true)
+
+    if (mode === 'forgot') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      if (error) setError(error.message)
+      else setInfo('If an account exists for that email, a reset link has been sent. Check your inbox and spam folder.')
+      setLoading(false)
+      return
+    }
 
     if (mode === 'signup') {
       const { error } = await supabase.auth.signUp({ email, password })
@@ -45,7 +55,7 @@ export default function LoginPage() {
           Let&apos;s Crack it
         </h1>
         <p className="text-center text-sm text-gray-500 mb-6">
-          {mode === 'login' ? 'Log in to your account' : 'Create a new account'}
+          {mode === 'login' ? 'Log in to your account' : mode === 'signup' ? 'Create a new account' : 'Enter your email to reset your password'}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -60,18 +70,21 @@ export default function LoginPage() {
               placeholder="you@example.com"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="At least 6 characters"
-            />
-          </div>
+
+          {mode !== 'forgot' && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Password</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="At least 6 characters"
+              />
+            </div>
+          )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
           {info && <p className="text-sm text-green-600">{info}</p>}
@@ -81,9 +94,21 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg py-2 text-sm font-medium transition disabled:opacity-50"
           >
-            {loading ? 'Please wait...' : mode === 'login' ? 'Log In' : 'Sign Up'}
+            {loading ? 'Please wait...' : mode === 'login' ? 'Log In' : mode === 'signup' ? 'Sign Up' : 'Send Reset Link'}
           </button>
         </form>
+
+        {mode === 'login' && (
+          <p className="text-center text-sm mt-3">
+            <button
+              type="button"
+              onClick={() => { setMode('forgot'); setError(''); setInfo('') }}
+              className="text-indigo-600 font-medium hover:underline"
+            >
+              Forgot password?
+            </button>
+          </p>
+        )}
 
         <p className="text-center text-sm text-gray-500 mt-4">
           {mode === 'login' ? (
@@ -93,7 +118,7 @@ export default function LoginPage() {
               </button>
             </>
           ) : (
-            <>Already have an account?{' '}
+            <>{mode === 'forgot' ? 'Remembered it?' : 'Already have an account?'}{' '}
               <button onClick={() => { setMode('login'); setError(''); setInfo('') }} className="text-indigo-600 font-medium hover:underline">
                 Log in
               </button>
