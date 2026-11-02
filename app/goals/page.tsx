@@ -135,7 +135,7 @@ export default function GoalsPage() {
               Let&apos;s Crack it
             </h1>
           </div>
-          <button onClick={logout} className="text-sm text-gray-500 hover:text-gray-800">
+          <button onClick={logout} className="text-sm text-gray-500 hover:text-gray-800 mr-10">
             Log out
           </button>
         </div>

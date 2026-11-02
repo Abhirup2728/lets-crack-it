@@ -17,3 +17,81 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+/* ===== Dark mode (activated by adding class "dark" to <html>) ===== */
+.dark {
+  --background: #0b1020;
+  --foreground: #e5e7eb;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+/* Page + card gradients */
+.dark .from-indigo-50 { --tw-gradient-from: #0b1020; }
+.dark .via-white { --tw-gradient-via: #111827; }
+.dark .to-purple-50 { --tw-gradient-to: #1a1033; }
+
+/* Backgrounds */
+.dark .bg-white { background-color: #111827; }
+.dark .bg-white\/70, .dark .bg-white\/60 { background-color: rgba(17, 24, 39, 0.75); }
+.dark .bg-gray-50 { background-color: #0f172a; }
+.dark .bg-gray-100 { background-color: #1f2937; }
+.dark .bg-indigo-50 { background-color: #1e1b4b; }
+.dark .bg-emerald-50 { background-color: #052e22; }
+.dark .bg-orange-50 { background-color: #2a1608; }
+.dark .bg-rose-50 { background-color: #2a1017; }
+.dark .bg-sky-50 { background-color: #0c1f2e; }
+.dark .bg-amber-50 { background-color: #2a1f08; }
+.dark .bg-violet-50 { background-color: #1c1233; }
+.dark .bg-cyan-50 { background-color: #082429; }
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover { background-color: #1f2937; }
+.dark .hover\:bg-gray-200:hover { background-color: #374151; }
+.dark .hover\:bg-indigo-50:hover { background-color: #1e1b4b; }
+
+/* Task rows use an inline #fafafa background */
+.dark [style*="rgb(250, 250, 250)"],
+.dark [style*="#fafafa"] { background-color: #1f2937 !important; }
+
+/* Borders */
+.dark .border-gray-100 { border-color: #1f2937; }
+.dark .border-gray-200 { border-color: #374151; }
+.dark .border-gray-300 { border-color: #4b5563; }
+.dark .border-indigo-100, .dark .border-indigo-200 { border-color: #312e81; }
+.dark .border-emerald-200 { border-color: #065f46; }
+.dark .border-orange-200 { border-color: #9a3412; }
+
+/* Text */
+.dark .text-gray-900 { color: #f3f4f6; }
+.dark .text-gray-800 { color: #e5e7eb; }
+.dark .text-gray-700 { color: #d1d5db; }
+.dark .text-gray-600 { color: #b6bcc8; }
+.dark .text-gray-500 { color: #9ca3af; }
+.dark .text-gray-400 { color: #8b93a1; }
+.dark .text-gray-300 { color: #5b6472; }
+.dark .hover\:text-gray-800:hover,
+.dark .hover\:text-gray-700:hover { color: #f9fafb; }
+.dark .text-indigo-600 { color: #a5b4fc; }
+.dark .text-indigo-700 { color: #c7d2fe; }
+.dark .text-emerald-600, .dark .text-emerald-700, .dark .text-emerald-800 { color: #6ee7b7; }
+.dark .text-orange-600, .dark .text-orange-800 { color: #fdba74; }
+.dark .text-rose-700 { color: #fda4af; }
+.dark .text-sky-700 { color: #7dd3fc; }
+.dark .text-amber-700 { color: #fcd34d; }
+.dark .text-violet-700 { color: #c4b5fd; }
+.dark .text-cyan-700 { color: #67e8f9; }
+
+/* Today's-date ring gap on the calendar */
+.dark .ring-offset-2 { --tw-ring-offset-color: #0b1020; }
+
+/* Charts (Recharts) */
+.dark .recharts-text,
+.dark .recharts-cartesian-axis-tick-value { fill: #cbd5e1; }
+.dark .recharts-cartesian-grid line { stroke: #374151; }
+.dark .recharts-cartesian-axis-line,
+.dark .recharts-cartesian-axis-tick-line { stroke: #6b7280; }
+.dark .recharts-default-tooltip {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+.dark .recharts-tooltip-label { color: #e5e7eb !important; }
