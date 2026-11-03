@@ -275,11 +275,6 @@ export default function TodayPage() {
               const active = isHappeningNow(t)
               return (
                 <li key={t.id} className="relative">
-                  {active && (
-                    <div className="absolute -left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
-                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
-                    </div>
-                  )}
                   <label
                     className={`relative overflow-hidden flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${
                       active ? 'ring-2 ring-green-400 ring-offset-2 shadow-md scale-[1.02]' : ''
@@ -315,7 +310,7 @@ export default function TodayPage() {
                       )}
                     </span>
                     {active && (
-                      <span className="relative z-10 text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full whitespace-nowrap">
+                      <span className="relative z-10 text-[10px] font-bold text-white bg-green-600 px-2.5 py-1 rounded-full whitespace-nowrap animate-pulse shadow-md shadow-green-500/50">
                         ● NOW
                       </span>
                     )}
