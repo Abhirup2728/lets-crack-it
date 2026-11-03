@@ -130,6 +130,7 @@ export default function HistoryPage() {
           <Link href={`/goals/${goalId}/today`} className="px-5 py-2 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-100">Today</Link>
           <Link href={`/goals/${goalId}/history`} className="px-5 py-2 rounded-full text-sm font-medium bg-indigo-600 text-white shadow">History</Link>
           <Link href={`/goals/${goalId}/dashboard`} className="px-5 py-2 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-100">Dashboard</Link>
+          <Link href={`/goals/${goalId}/notes`} className="px-4 py-2 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-100">Notes</Link>
         </div>
 
         <div className="text-center">

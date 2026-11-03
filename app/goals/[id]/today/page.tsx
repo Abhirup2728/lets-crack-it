@@ -9,6 +9,7 @@ import { quoteForDate } from '@/lib/quotes'
 import DayCountdown from '@/components/DayCountdown'
 
 type LogMap = Record<string, boolean>
+type NoteMap = Record<string, string>
 
 export default function TodayPage() {
   const params = useParams<{ id: string }>()
@@ -19,6 +20,10 @@ export default function TodayPage() {
   const [goal, setGoal] = useState<Goal | null>(null)
   const [allTasks, setAllTasks] = useState<GoalTask[]>([])
   const [logs, setLogs] = useState<LogMap>({})
+  const [notes, setNotes] = useState<NoteMap>({})
+  const [openNoteId, setOpenNoteId] = useState<string | null>(null)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [noteSaving, setNoteSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [currentTime, setCurrentTime] = useState('')
@@ -67,10 +72,13 @@ export default function TodayPage() {
       if (logErr) console.error(logErr)
 
       const map: LogMap = {}
+      const noteMap: NoteMap = {}
       for (const l of logData || []) {
         map[l.task_id] = l.completed
+        if (l.note) noteMap[l.task_id] = l.note
       }
       setLogs(map)
+      setNotes(noteMap)
       setLoading(false)
     }
     load()
@@ -132,6 +140,24 @@ export default function TodayPage() {
     return { pct: 100, color: '#dc2626' } // red, full
   }
 
+  async function saveNote(taskId: string) {
+    const text = noteDraft.trim()
+    setNoteSaving(true)
+    const { error } = await supabase
+      .from('goal_logs')
+      .upsert(
+        { goal_id: goalId, task_id: taskId, date, note: text || null },
+        { onConflict: 'task_id,date' }
+      )
+    setNoteSaving(false)
+    if (error) {
+      console.error(error)
+      return
+    }
+    setNotes((prev) => ({ ...prev, [taskId]: text }))
+    setOpenNoteId(null)
+  }
+
   async function toggle(taskId: string) {
     const newValue = !logs[taskId]
     setLogs((prev) => ({ ...prev, [taskId]: newValue }))
@@ -180,6 +206,9 @@ export default function TodayPage() {
           <Link href={`/goals/${goalId}/dashboard`} className="px-5 py-2 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-100">
             Dashboard
           </Link>
+          <Link href={`/goals/${goalId}/notes`} className="px-4 py-2 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-100">
+            Notes
+          </Link>
         </div>
 
         <div className="text-center mb-6">
@@ -207,12 +236,12 @@ export default function TodayPage() {
           <DayCountdown />
         </div>
 
-        <div className="mb-6 bg-gradient-to-br from-black-50 to-purple-50 rounded-xl shadow-sm border border-indigo-100 p-5 text-center">
+        <div className="mb-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-sm border border-indigo-100 p-5 text-center">
           <div className="text-[11px] font-bold uppercase tracking-widest text-indigo-400 mb-2">
             Quote of the Day
           </div>
           <p
-            className="text-lg md:text-xl italic font-bold text-black-700 leading-snug"
+            className="text-lg md:text-xl italic font-bold text-gray-900 leading-snug"
             style={{ fontFamily: "'Georgia', 'Cambria', serif" }}
           >
             &ldquo;{quoteForDate(date)}&rdquo;
@@ -306,7 +335,59 @@ export default function TodayPage() {
                         </span>
                       )
                     })()}
+                  <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setOpenNoteId(t.id)
+                        setNoteDraft(notes[t.id] ?? '')
+                      }}
+                      className="relative z-10 shrink-0 bg-sky-600 hover:bg-sky-700 text-white font-bold italic text-[11px] px-3 py-1.5 rounded-full shadow-sm whitespace-nowrap transition"
+                    >
+                      {notes[t.id] ? 'Edit Note' : '+ Note'}
+                    </button>
                   </label>
+                  <div className="px-1">
+                    {openNoteId === t.id ? (
+                      <div className="mt-1 rounded-lg border border-gray-300 bg-white p-2">
+                        <textarea
+                          value={noteDraft}
+                          onChange={(e) => setNoteDraft(e.target.value)}
+                          rows={3}
+                          autoFocus
+                          placeholder="Why you missed it, or a quick study note..."
+                          className="w-full text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none resize-none"
+                        />
+                        <div className="flex justify-end gap-2 mt-1">
+                          <button
+                            type="button"
+                            onClick={() => setOpenNoteId(null)}
+                            className="text-xs text-gray-500 hover:text-gray-800 px-2 py-1"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => saveNote(t.id)}
+                            disabled={noteSaving}
+                            className="text-xs bg-indigo-600 text-white rounded-md px-3 py-1 hover:bg-indigo-700 disabled:opacity-50"
+                          >
+                            {noteSaving ? 'Saving...' : 'Save note'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : notes[t.id] ? (
+                      <button
+                        type="button"
+                        onClick={() => { setOpenNoteId(t.id); setNoteDraft(notes[t.id]) }}
+                        className="mt-1 w-full text-left text-xs text-gray-600 bg-indigo-50 border border-indigo-100 rounded-md px-2 py-1.5 whitespace-pre-line hover:bg-indigo-100"
+                      >
+                        <span className="font-semibold text-indigo-600">Note: </span>
+                        {notes[t.id]}
+                      </button>
+                    ) : null}
+                  </div>
                 </li>
               )
             })}

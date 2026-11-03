@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { supabase } from '@/lib/supabase'
-import { Goal, GoalTask, dayOfWeek, formatFullDate, todayStr, formatTime12h } from '@/lib/goals'
+import { Goal, GoalTask, dayOfWeek, formatFullDate, todayStr, formatTime12h, allDatesBetween } from '@/lib/goals'
 
 export default function DayDetailPage() {
   const params = useParams<{ id: string; date: string }>()
@@ -16,6 +16,7 @@ export default function DayDetailPage() {
   const [goal, setGoal] = useState<Goal | null>(null)
   const [allTasks, setAllTasks] = useState<GoalTask[]>([])
   const [logs, setLogs] = useState<Record<string, boolean>>({})
+  const [notes, setNotes] = useState<Record<string, string>>({})
   const [allTimeAvg, setAllTimeAvg] = useState(0)
   const [loading, setLoading] = useState(true)
 
@@ -42,19 +43,34 @@ export default function DayDetailPage() {
           .eq('goal_id', goalId)
           .eq('date', date)
         const map: Record<string, boolean> = {}
-        for (const l of dayLogs || []) map[l.task_id] = l.completed
-        setLogs(map)
-
-        const { data: allLogs } = await supabase.from('goal_logs').select('*').eq('goal_id', goalId)
-        const byDate: Record<string, { done: number; total: number }> = {}
-        for (const l of allLogs || []) {
-          if (!byDate[l.date]) byDate[l.date] = { done: 0, total: 0 }
-          byDate[l.date].total += 1
-          if (l.completed) byDate[l.date].done += 1
+        const noteMap: Record<string, string> = {}
+        for (const l of dayLogs || []) {
+          map[l.task_id] = l.completed
+          if (l.note) noteMap[l.task_id] = l.note
         }
-        const pcts = Object.values(byDate).map((v) => (v.total ? v.done / v.total : 0))
-        const avg = pcts.length ? Math.round((pcts.reduce((a, b) => a + b, 0) / pcts.length) * 100) : 0
-        setAllTimeAvg(avg)
+        setLogs(map)
+        setNotes(noteMap)
+
+        // All-time average: scheduled tasks are the denominator, same as the calendar
+        const { data: allLogs } = await supabase
+          .from('goal_logs')
+          .select('task_id,date,completed')
+          .eq('goal_id', goalId)
+        const lookup = new Map<string, boolean>()
+        for (const l of allLogs || []) lookup.set(`${l.task_id}__${l.date}`, l.completed)
+
+        if (goalData && taskData) {
+          const endStr = todayStr() < goalData.end_date ? todayStr() : goalData.end_date
+          const pcts: number[] = []
+          for (const d of allDatesBetween(goalData.start_date, endStr)) {
+            const scheduled = taskData.filter((t: GoalTask) => t.days_of_week.includes(dayOfWeek(d)))
+            if (scheduled.length === 0) continue
+            const done = scheduled.filter((t: GoalTask) => lookup.get(`${t.id}__${d}`)).length
+            pcts.push(done / scheduled.length)
+          }
+          const avg = pcts.length ? Math.round((pcts.reduce((a, b) => a + b, 0) / pcts.length) * 100) : 0
+          setAllTimeAvg(avg)
+        }
       }
 
       setLoading(false)
@@ -65,7 +81,6 @@ export default function DayDetailPage() {
   const dayTasks = useMemo(() => {
     const filtered = allTasks.filter((t) => t.days_of_week.includes(dayOfWeek(date)))
     return [...filtered].sort((a, b) => {
-      // tasks without a start time sort to the end
       if (!a.start_time && !b.start_time) return 0
       if (!a.start_time) return 1
       if (!b.start_time) return -1
@@ -76,6 +91,7 @@ export default function DayDetailPage() {
   const doneCount = dayTasks.filter((t) => logs[t.id]).length
   const completion = dayTasks.length ? Math.round((doneCount / dayTasks.length) * 100) : 0
   const diff = completion - allTimeAvg
+  const notesCount = dayTasks.filter((t) => notes[t.id]).length
 
   const donutData = [
     { name: 'Completed', value: doneCount, color: '#16a34a' },
@@ -170,34 +186,47 @@ export default function DayDetailPage() {
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold mb-3">Task Checklist — This Day</h3>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-sm font-semibold">Task Checklist — This Day</h3>
+                <span className="text-xs text-gray-500">
+                  {notesCount} {notesCount === 1 ? 'note' : 'notes'}
+                </span>
+              </div>
               <ul className="space-y-2">
                 {dayTasks.map((t) => {
                   const checked = !!logs[t.id]
+                  const note = notes[t.id]
                   return (
                     <li
                       key={t.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border-2"
+                      className="p-3 rounded-lg border-2"
                       style={{
                         backgroundColor: checked ? `${t.color}15` : '#fafafa',
                         borderColor: t.color,
-                        opacity: checked ? 1 : 0.6,
                       }}
                     >
-                      <span
-                        className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                        style={{ backgroundColor: checked ? '#16a34a' : '#9ca3af' }}
-                      >
-                        {checked ? '✓' : '✗'}
-                      </span>
-                      <span className="font-medium" style={{ color: t.color }}>
-                        {t.label}
-                        {t.start_time && t.end_time && (
-                          <span className="text-xs text-gray-400 ml-2 font-normal">
-                            {formatTime12h(t.start_time)}–{formatTime12h(t.end_time)}
-                          </span>
-                        )}
-                      </span>
+                      <div className="flex items-center gap-3" style={{ opacity: checked ? 1 : 0.7 }}>
+                        <span
+                          className="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                          style={{ backgroundColor: checked ? '#16a34a' : '#9ca3af' }}
+                        >
+                          {checked ? '✓' : '✗'}
+                        </span>
+                        <span className="font-medium" style={{ color: t.color }}>
+                          {t.label}
+                          {t.start_time && t.end_time && (
+                            <span className="text-xs text-gray-400 ml-2 font-normal">
+                              {formatTime12h(t.start_time)}–{formatTime12h(t.end_time)}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      {note && (
+                        <div className="mt-2 text-xs text-gray-700 bg-sky-50 border border-sky-200 rounded-md px-2 py-1.5 whitespace-pre-line">
+                          <span className="font-semibold text-sky-700">Note: </span>
+                          {note}
+                        </div>
+                      )}
                     </li>
                   )
                 })}
