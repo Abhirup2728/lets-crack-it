@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { Goal, GoalTask, todayStr, dayOfWeek, formatFullDate, formatTime12h, daysRemaining, goalProgressPct } from '@/lib/goals'
 import { quoteForDate } from '@/lib/quotes'
 import DayCountdown from '@/components/DayCountdown'
+import LiveClock from '@/components/LiveClock'
 
 type LogMap = Record<string, boolean>
 type NoteMap = Record<string, string>
@@ -211,12 +212,7 @@ export default function TodayPage() {
           </Link>
         </div>
 
-        <div className="text-center mb-6">
-          <h2 className="text-3xl font-bold">{formatFullDate(date)}</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {dayOfWeek(date) === 0 || dayOfWeek(date) === 6 ? 'Weekend' : 'Weekday'} · {saving ? 'Saving...' : 'All changes saved'}
-          </p>
-        </div>
+        <LiveClock saving={saving} />
 
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl shadow-sm p-4 text-center text-white">
