@@ -108,12 +108,19 @@ export default function DayDetailPage() {
           ← Back to calendar
         </Link>
 
-        <div className="text-center mb-6">
-          <h2 className="text-3xl font-bold">{formatFullDate(date)}</h2>
-          <p className="text-sm text-gray-500 mt-1">
+        <div className="relative overflow-hidden rounded-2xl shadow-lg border border-white/20 bg-gradient-to-br from-indigo-700 via-purple-600 to-orange-500 text-white px-4 py-2.5 mb-4 text-center">
+          <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest opacity-90">
             {goal.name}
-            {isFuture && <span className="ml-2 text-indigo-500 font-medium">· Upcoming</span>}
-          </p>
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none my-1">
+            {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' })}
+          </div>
+          <div className="mx-auto my-1 h-px w-3/4 bg-white/40" />
+          <div className="text-sm sm:text-base font-bold">{formatFullDate(date)}</div>
+          <div className="mt-0.5 text-[10px] sm:text-xs opacity-90">
+            {dayOfWeek(date) === 0 || dayOfWeek(date) === 6 ? 'Weekend' : 'Weekday'}
+            {date === todayStr() ? ' · Today' : isFuture ? ' · Upcoming' : ' · Past day'}
+          </div>
         </div>
 
         {dayTasks.length === 0 ? (
