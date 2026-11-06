@@ -20,7 +20,13 @@ export default function DayDetailPage() {
   const [allTimeAvg, setAllTimeAvg] = useState(0)
   const [loading, setLoading] = useState(true)
 
+  const [editNoteId, setEditNoteId] = useState<string | null>(null)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [noteSaving, setNoteSaving] = useState(false)
+  const [pastMsgId, setPastMsgId] = useState<string | null>(null)
+
   const isFuture = date > todayStr()
+  const canEditNotes = date >= todayStr() // today and upcoming days only
 
   useEffect(() => {
     async function load() {
@@ -36,21 +42,22 @@ export default function DayDetailPage() {
       const { data: taskData } = await supabase.from('goal_tasks').select('*').eq('goal_id', goalId)
       setAllTasks(taskData || [])
 
-      if (date <= todayStr()) {
-        const { data: dayLogs } = await supabase
-          .from('goal_logs')
-          .select('*')
-          .eq('goal_id', goalId)
-          .eq('date', date)
-        const map: Record<string, boolean> = {}
-        const noteMap: Record<string, string> = {}
-        for (const l of dayLogs || []) {
-          map[l.task_id] = l.completed
-          if (l.note) noteMap[l.task_id] = l.note
-        }
-        setLogs(map)
-        setNotes(noteMap)
+      // Fetch this day's records for every date (future days can hold planning notes)
+      const { data: dayLogs } = await supabase
+        .from('goal_logs')
+        .select('*')
+        .eq('goal_id', goalId)
+        .eq('date', date)
+      const map: Record<string, boolean> = {}
+      const noteMap: Record<string, string> = {}
+      for (const l of dayLogs || []) {
+        map[l.task_id] = l.completed
+        if (l.note) noteMap[l.task_id] = l.note
+      }
+      setLogs(map)
+      setNotes(noteMap)
 
+      if (date <= todayStr()) {
         // All-time average: scheduled tasks are the denominator, same as the calendar
         const { data: allLogs } = await supabase
           .from('goal_logs')
@@ -98,6 +105,100 @@ export default function DayDetailPage() {
     { name: 'Missed', value: dayTasks.length - doneCount, color: '#e5e7eb' },
   ]
 
+  function handleNoteButton(taskId: string) {
+    if (!canEditNotes) {
+      setPastMsgId(taskId)
+      setTimeout(() => setPastMsgId((prev) => (prev === taskId ? null : prev)), 3500)
+      return
+    }
+    setEditNoteId(taskId)
+    setNoteDraft(notes[taskId] ?? '')
+  }
+
+  async function saveNote(taskId: string) {
+    const text = noteDraft.trim()
+    setNoteSaving(true)
+    const { error } = await supabase
+      .from('goal_logs')
+      .upsert(
+        { goal_id: goalId, task_id: taskId, date, note: text || null },
+        { onConflict: 'task_id,date' }
+      )
+    setNoteSaving(false)
+    if (error) {
+      console.error(error)
+      return
+    }
+    setNotes((prev) => ({ ...prev, [taskId]: text }))
+    setEditNoteId(null)
+  }
+
+  function renderNoteButton(t: GoalTask) {
+    return (
+      <button
+        type="button"
+        aria-disabled={!canEditNotes}
+        onClick={() => handleNoteButton(t.id)}
+        className={`shrink-0 bg-sky-600 text-white font-bold italic text-[11px] px-3 py-1.5 rounded-full shadow-sm whitespace-nowrap transition ${
+          canEditNotes ? 'hover:bg-sky-700' : 'opacity-40 cursor-not-allowed'
+        }`}
+      >
+        {notes[t.id] ? 'Edit Note' : '+ Note'}
+      </button>
+    )
+  }
+
+  function renderNoteArea(t: GoalTask) {
+    return (
+      <>
+        {editNoteId === t.id ? (
+          <div className="mt-2 rounded-lg border border-gray-300 bg-white p-2">
+            <textarea
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              rows={3}
+              maxLength={1000}
+              autoFocus
+              placeholder={
+                isFuture
+                  ? 'What do you plan to do in this task?'
+                  : 'Why you missed it, or a quick study note...'
+              }
+              className="w-full text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none resize-none"
+            />
+            <div className="flex justify-end gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => setEditNoteId(null)}
+                className="text-xs text-gray-500 hover:text-gray-800 px-2 py-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => saveNote(t.id)}
+                disabled={noteSaving}
+                className="text-xs bg-indigo-600 text-white rounded-md px-3 py-1 hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {noteSaving ? 'Saving...' : 'Save note'}
+              </button>
+            </div>
+          </div>
+        ) : notes[t.id] ? (
+          <div className="mt-2 text-xs text-gray-700 bg-sky-50 border border-sky-200 rounded-md px-2 py-1.5 whitespace-pre-line">
+            <span className="font-semibold text-sky-700">Note: </span>
+            {notes[t.id]}
+          </div>
+        ) : null}
+        {pastMsgId === t.id && (
+          <p className="mt-2 text-xs text-red-600">
+            You can&apos;t add or edit notes here — this day has already passed. Notes can only be added for today or upcoming days.
+          </p>
+        )}
+      </>
+    )
+  }
+
   if (loading) return <main className="p-8 text-center text-gray-500">Loading...</main>
   if (!goal) return <main className="p-8 text-center text-gray-500">Goal not found.</main>
 
@@ -130,29 +231,38 @@ export default function DayDetailPage() {
         ) : isFuture ? (
           <>
             <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 mb-4 text-center text-sm text-indigo-700">
-              This day hasn&apos;t happened yet — here&apos;s what&apos;s scheduled. You can&apos;t check these off until the day arrives.
+              This day hasn&apos;t happened yet. You can&apos;t check tasks off, but you can add notes to plan ahead — they&apos;ll show up on your Today page when the day arrives.
             </div>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold mb-3">Scheduled Tasks ({dayTasks.length})</h3>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-sm font-semibold">Scheduled Tasks ({dayTasks.length})</h3>
+                <span className="text-xs text-gray-500">
+                  {notesCount} {notesCount === 1 ? 'note' : 'notes'}
+                </span>
+              </div>
               <ul className="space-y-2">
                 {dayTasks.map((t) => (
                   <li
                     key={t.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border-2"
+                    className="p-3 rounded-lg border-2"
                     style={{ backgroundColor: `${t.color}10`, borderColor: t.color }}
                   >
-                    <span
-                      className="w-5 h-5 rounded-full border-2 flex-shrink-0"
-                      style={{ borderColor: t.color }}
-                    />
-                    <span className="font-medium" style={{ color: t.color }}>
-                      {t.label}
-                      {t.start_time && t.end_time && (
-                        <span className="text-xs text-gray-400 ml-2 font-normal">
-                          {formatTime12h(t.start_time)}–{formatTime12h(t.end_time)}
-                        </span>
-                      )}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="w-5 h-5 rounded-full border-2 flex-shrink-0"
+                        style={{ borderColor: t.color }}
+                      />
+                      <span className="font-medium flex-1" style={{ color: t.color }}>
+                        {t.label}
+                        {t.start_time && t.end_time && (
+                          <span className="text-xs text-gray-400 ml-2 font-normal">
+                            {formatTime12h(t.start_time)}–{formatTime12h(t.end_time)}
+                          </span>
+                        )}
+                      </span>
+                      {renderNoteButton(t)}
+                    </div>
+                    {renderNoteArea(t)}
                   </li>
                 ))}
               </ul>
@@ -202,7 +312,6 @@ export default function DayDetailPage() {
               <ul className="space-y-2">
                 {dayTasks.map((t) => {
                   const checked = !!logs[t.id]
-                  const note = notes[t.id]
                   return (
                     <li
                       key={t.id}
@@ -212,28 +321,26 @@ export default function DayDetailPage() {
                         borderColor: t.color,
                       }}
                     >
-                      <div className="flex items-center gap-3" style={{ opacity: checked ? 1 : 0.7 }}>
-                        <span
-                          className="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                          style={{ backgroundColor: checked ? '#16a34a' : '#9ca3af' }}
-                        >
-                          {checked ? '✓' : '✗'}
-                        </span>
-                        <span className="font-medium" style={{ color: t.color }}>
-                          {t.label}
-                          {t.start_time && t.end_time && (
-                            <span className="text-xs text-gray-400 ml-2 font-normal">
-                              {formatTime12h(t.start_time)}–{formatTime12h(t.end_time)}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      {note && (
-                        <div className="mt-2 text-xs text-gray-700 bg-sky-50 border border-sky-200 rounded-md px-2 py-1.5 whitespace-pre-line">
-                          <span className="font-semibold text-sky-700">Note: </span>
-                          {note}
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-1" style={{ opacity: checked ? 1 : 0.7 }}>
+                          <span
+                            className="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                            style={{ backgroundColor: checked ? '#16a34a' : '#9ca3af' }}
+                          >
+                            {checked ? '✓' : '✗'}
+                          </span>
+                          <span className="font-medium" style={{ color: t.color }}>
+                            {t.label}
+                            {t.start_time && t.end_time && (
+                              <span className="text-xs text-gray-400 ml-2 font-normal">
+                                {formatTime12h(t.start_time)}–{formatTime12h(t.end_time)}
+                              </span>
+                            )}
+                          </span>
                         </div>
-                      )}
+                        {renderNoteButton(t)}
+                      </div>
+                      {renderNoteArea(t)}
                     </li>
                   )
                 })}

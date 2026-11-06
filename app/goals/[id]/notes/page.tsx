@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { Goal, GoalTask, formatFullDate, formatTime12h } from '@/lib/goals'
+import { Goal, GoalTask, formatFullDate, formatTime12h, todayStr } from '@/lib/goals'
 
 type NoteRow = { task_id: string; date: string; completed: boolean | null; note: string }
 
